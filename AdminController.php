@@ -1,12 +1,14 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Dashboard;
 
-use App\Models\Admin;
+use App\Http\Controllers\Controller;
+use App\Models\admin;
 use Illuminate\Http\Request;
 
 class AdminController extends Controller
 {
+    //
     public function index()
     {
        
@@ -17,7 +19,7 @@ class AdminController extends Controller
     }
     public function create()
     {
-        return view('dashboard.admins.create',compact('admins'));
+        return view('dashboard.admins.create');
     }
 
     public function store(Request $request)
@@ -27,12 +29,13 @@ class AdminController extends Controller
             'phone' => 'numeric|required',
             'email' => 'email|required',
             'image' => 'image|nullable',
-            'status' => 'required',
+            'status' => 'nullable',
             'password' => 'required|min:10',
         ]);
 
         if ($request->hasFile('image')) {
-            $validatedData['image'] = 'imgs/' . $request->file('image')->storeAs('Admin', time() . '.' . $request->file('image')->extension());
+            $validatedData['image'] = 'imgs/' . $request->file('image')->storeAs('Admin', 
+            time() . '.' . $request->file('image')->extension());
         }
 
         $validatedData['password'] = bcrypt($request->password);
@@ -42,25 +45,25 @@ class AdminController extends Controller
         return redirect()->route('admins.index');
     }
 
-    public function edit($email)
+    public function edit($id)
     {
-        $admin = Admin::where('email', $email)->firstOrFail(); 
+        $admin = admin::findOrFail($id);
         return view('dashboard.admins.edit', compact('admin'));
     }
 
-    public function update(Request $request, $email)
+    public function update(Request $request, $id)
     {
-        $request->validate([
+        $validatedData =  $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required',
-            'phone' => 'required|string|max:15',
-            'status' => 'required|in:Active,Inactive',
+            'email' => 'nullable',
+            'phone' => 'nullable|string|max:15',
+            'status' => 'nullable',
             'password' => 'nullable|string|min:6',
-            'quota' => 'required|numeric',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
-        $admin = Admin::where('email', $email)->firstOrFail();
+        $admin = admin::findOrFail($id);
+
 
         if ($request->hasFile('image')) {
             if ($admin->image && file_exists(storage_path('app/public/' . $admin->image))) {
@@ -71,22 +74,14 @@ class AdminController extends Controller
             $imagePath = $admin->image;
         }
 
-        $admin->update([
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'status' => $request->status,
-            'password' => $request->password ? bcrypt($request->password) : $admin->password,
-            'quota' => $request->quota,
-            'image' => $imagePath,
-        ]);
+        $admin->update($validatedData);
 
         return redirect()->route('admins.index')->with('success', 'Admin updated successfully!');
     }
 
-    public function destroy($email)
+    public function destroy($id)
     {
-        $admin = Admin::where('email', $email)->firstOrFail();
+        $admin = admin::findOrFail($id);
         
         if ($admin->image && file_exists(storage_path('app/public/' . $admin->image))) {
             unlink(storage_path('app/public/' . $admin->image));
